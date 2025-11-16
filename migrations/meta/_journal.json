@@ -15,6 +15,13 @@
       "when": 1763307089132,
       "tag": "0001_flippant_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763307620082,
+      "tag": "0002_red_hitman",
+      "breakpoints": true
     }
   ]
 }

@@ -385,6 +385,17 @@ export const venueFiles = pgTable(
 );
 
 // Square Integration Tables
+export const squareConfig = pgTable("square_config", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  accessToken: text("access_token").notNull(), // Encrypted in application
+  environment: text("environment").notNull().default("sandbox"), // 'sandbox' or 'production'
+  isActive: boolean("is_active").notNull().default(true),
+  lastTested: timestamp("last_tested", { withTimezone: true }),
+  testResult: text("test_result"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const squareCustomers = pgTable("square_customers", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   squareCustomerId: text("square_customer_id").notNull().unique(),
@@ -630,6 +641,12 @@ export const insertPersonnelFileSchema = createInsertSchema(personnelFiles).omit
 });
 
 // Square Integration insert schemas
+export const insertSquareConfigSchema = createInsertSchema(squareConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertSquareCustomerSchema = createInsertSchema(squareCustomers).omit({
   id: true,
   fetchedAt: true,
@@ -721,6 +738,9 @@ export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
 export type InsertPersonnelPayout = InsertPayout;
 
 // Square Integration types
+export type SquareConfig = typeof squareConfig.$inferSelect;
+export type InsertSquareConfig = z.infer<typeof insertSquareConfigSchema>;
+
 export type SquareCustomer = typeof squareCustomers.$inferSelect;
 export type InsertSquareCustomer = z.infer<typeof insertSquareCustomerSchema>;
 

@@ -28,6 +28,7 @@ import Venues from "@/pages/venues";
 import VenueDetail from "@/pages/venue-detail";
 import Contacts from "@/pages/contacts";
 import Settings from "@/pages/settings";
+import Integrations from "@/pages/integrations";
 import Profile from "@/pages/profile";
 import MyGigs from "@/pages/my-gigs";
 import MyPayouts from "@/pages/my-payouts";
@@ -149,6 +150,11 @@ function Router() {
       <ProtectedRoute 
         path="/settings" 
         component={Settings}
+        allowedRoles={["owner"]}
+      />
+      <ProtectedRoute 
+        path="/integrations" 
+        component={Integrations}
         allowedRoles={["owner"]}
       />
       
