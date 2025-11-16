@@ -84,25 +84,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const registerSchema = z.object({
       email: z.string().email(),
       password: z.string().min(6),
-      name: z.string().optional(),
-      // Role is not accepted from client - always set to personnel for security
+      firstName: z.string().min(1, "First name is required"),
+      lastName: z.string().min(1, "Last name is required"),
     });
 
     try {
       const data = registerSchema.parse(req.body);
       
-      // Check if user exists
+      // Check if user account already exists for this email
       const existingUser = await storage.getUserByEmail(data.email);
       if (existingUser) {
-        return res.status(400).json({ error: "Email already registered" });
+        return res.status(400).json({ error: "This email is already registered" });
       }
 
-      // Create user with personnel role only (lowest privilege)
-      // Admin/manager roles must be assigned by existing admins
+      // Check if personnel record exists with matching email, firstName, and lastName
+      const allPersonnel = await storage.getAllPersonnel();
+      const matchingPersonnel = allPersonnel.find(
+        (p) => 
+          p.email?.toLowerCase() === data.email.toLowerCase() &&
+          p.firstName.toLowerCase() === data.firstName.toLowerCase() &&
+          p.lastName.toLowerCase() === data.lastName.toLowerCase()
+      );
+
+      if (!matchingPersonnel) {
+        return res.status(403).json({ 
+          error: "Unauthorized: No personnel record found matching your email and name. Please contact an administrator to be added to the personnel list before registering." 
+        });
+      }
+
+      // Create user account linked to the existing personnel record
       const user = await storage.createUser({
         email: data.email,
         passwordHash: data.password,
-        role: "personnel", // Always set to personnel for new registrations
+        role: "personnel",
+        personnelId: matchingPersonnel.id,
       });
 
       // Auto-login after registration

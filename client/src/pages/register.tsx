@@ -5,8 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import InputMask from "react-input-mask";
-import { StateSelector } from "@/components/state-selector";
 import {
   Card,
   CardContent,
@@ -16,11 +14,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -40,19 +36,6 @@ const registerSchema = z.object({
   confirmPassword: z.string(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  phone: z
-    .string()
-    .regex(
-      /^\(\d{3}\) \d{3}-\d{4}$/,
-      "Phone must be in format (XXX) XXX-XXXX"
-    ),
-  ssn: z
-    .string()
-    .regex(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format XXX-XX-XXXX"),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zip: z.string().regex(/^\d{5}(-\d{4})?$/, "Invalid ZIP code").optional().or(z.literal("")),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -73,12 +56,6 @@ export default function Register() {
       confirmPassword: "",
       firstName: "",
       lastName: "",
-      phone: "",
-      ssn: "",
-      address: "",
-      city: "",
-      state: "",
-      zip: "",
     },
   });
 
@@ -90,12 +67,6 @@ export default function Register() {
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
-        phone: data.phone,
-        ssn: data.ssn,
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        zip: data.zip,
       });
       
       if (!response.ok) {
@@ -131,7 +102,7 @@ export default function Register() {
           </div>
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>
-            Register to join the DJ & Karaoke team
+            Register to access your DJ & Karaoke personnel portal. You must already be added as personnel by an administrator.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -240,140 +211,7 @@ export default function Register() {
                 />
               </div>
 
-              {/* Phone and SSN */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <InputMask
-                          mask="(999) 999-9999"
-                          value={field.value}
-                          onChange={field.onChange}
-                        >
-                          {(inputProps: any) => (
-                            <Input
-                              {...inputProps}
-                              placeholder="(555) 555-5555"
-                              data-testid="input-phone"
-                            />
-                          )}
-                        </InputMask>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                <FormField
-                  control={form.control}
-                  name="ssn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SSN</FormLabel>
-                      <FormControl>
-                        <InputMask
-                          mask="999-99-9999"
-                          value={field.value}
-                          onChange={field.onChange}
-                        >
-                          {(inputProps: any) => (
-                            <Input
-                              {...inputProps}
-                              type="password"
-                              placeholder="XXX-XX-XXXX"
-                              data-testid="input-ssn"
-                            />
-                          )}
-                        </InputMask>
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Required for payroll processing
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Address */}
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="123 Main St"
-                        data-testid="input-address"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* City, State, ZIP */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="New York"
-                          data-testid="input-city"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="state"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>State (Optional)</FormLabel>
-                      <FormControl>
-                        <StateSelector
-                          value={field.value || ""}
-                          onValueChange={field.onChange}
-                          placeholder="Select state"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="zip"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ZIP Code (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="10001"
-                          data-testid="input-zip"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
               {/* Submit Button */}
               <Button
