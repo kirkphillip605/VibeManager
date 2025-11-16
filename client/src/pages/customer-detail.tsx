@@ -12,6 +12,7 @@ import {
   MapPin,
   ChevronLeft,
   Edit,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,12 +27,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Customer, Contact, Gig } from "@shared/schema";
 import { CustomerFormDialog } from "@/components/customer-form-dialog";
+import { ContactFormDialog } from "@/components/contact-form-dialog";
+import { GigFormDialog } from "@/components/gig-form-dialog";
 
 export default function CustomerDetailPage() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const customerId = params.id;
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [gigDialogOpen, setGigDialogOpen] = useState(false);
 
   // Fetch customer details
   const { data: customer, isLoading: loadingCustomer } = useQuery<Customer>({
@@ -162,7 +167,17 @@ export default function CustomerDetailPage() {
               <CardTitle>Associated Contacts</CardTitle>
               <CardDescription>People connected to this customer</CardDescription>
             </div>
-            <Badge variant="secondary">{contacts.length} contacts</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{contacts.length} contacts</Badge>
+              <Button
+                size="sm"
+                onClick={() => setContactDialogOpen(true)}
+                data-testid="button-add-contact"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Contact
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingContacts ? (
@@ -174,6 +189,14 @@ export default function CustomerDetailPage() {
               <div className="text-center py-8">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">No contacts associated</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setContactDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Contact
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -218,7 +241,17 @@ export default function CustomerDetailPage() {
               <CardTitle>Recent Gigs</CardTitle>
               <CardDescription>Events booked by this customer</CardDescription>
             </div>
-            <Badge variant="secondary">{gigs.length} total</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{gigs.length} total</Badge>
+              <Button
+                size="sm"
+                onClick={() => setGigDialogOpen(true)}
+                data-testid="button-create-gig"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Create Gig
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingGigs ? (
@@ -230,6 +263,14 @@ export default function CustomerDetailPage() {
               <div className="text-center py-8">
                 <Music className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">No gigs booked yet</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setGigDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Gig
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -282,6 +323,18 @@ export default function CustomerDetailPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         customer={customer}
+      />
+
+      {/* Add Contact Dialog */}
+      <ContactFormDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+      />
+
+      {/* Create Gig Dialog */}
+      <GigFormDialog
+        open={gigDialogOpen}
+        onOpenChange={setGigDialogOpen}
       />
     </div>
   );

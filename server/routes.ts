@@ -77,6 +77,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Set audit user for all authenticated requests
+  app.use(asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated() && req.user) {
+      const userId = (req.user as any).id;
+      await storage.setAuditUser(userId);
+    } else {
+      // Set system user for unauthenticated requests
+      await storage.setAuditUser('00000000-0000-0000-0000-000000000000');
+    }
+    next();
+  }));
+
   // ===== AUTHENTICATION ROUTES =====
   
   // Register
@@ -727,6 +739,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ error: "Document type not found" });
     }
     res.json({ message: "Document type deleted successfully" });
+  }));
+
+  // ===== SQUARE INTEGRATION ROUTES =====
+  
+  // Get Square configuration
+  app.get('/api/integrations/square', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    // Only owner can view Square config
+    if (req.user?.role !== 'owner') {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const config = await storage.getSquareConfig();
+    if (!config) {
+      return res.status(404).json({ error: "Square integration not configured" });
+    }
+    res.json(config);
+  }));
+
+  // Create or update Square configuration
+  app.post('/api/integrations/square', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    // Only owner can configure Square
+    if (req.user?.role !== 'owner') {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const config = await storage.createOrUpdateSquareConfig(req.body);
+    res.json(config);
+  }));
+
+  app.put('/api/integrations/square/:id', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    // Only owner can configure Square
+    if (req.user?.role !== 'owner') {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const config = await storage.updateSquareConfig(req.params.id, req.body);
+    if (!config) {
+      return res.status(404).json({ error: "Square configuration not found" });
+    }
+    res.json(config);
+  }));
+
+  // Test Square connection
+  app.post('/api/integrations/square/test', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    // Only owner can test Square connection
+    if (req.user?.role !== 'owner') {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const result = await storage.testSquareConnection(req.body.accessToken, req.body.environment);
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+    res.json(result);
   }));
 
   // Error handling middleware (should be last)

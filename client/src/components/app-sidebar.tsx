@@ -14,6 +14,7 @@ import {
   MapPin,
   FolderOpen,
   Loader2,
+  Plug,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import {
@@ -149,6 +150,11 @@ export function AppSidebar() {
           title: "Settings",
           url: "/settings",
           icon: Settings,
+        },
+        {
+          title: "Integrations",
+          url: "/integrations",
+          icon: Plug,
         },
       ]
     : [];

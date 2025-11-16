@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import InputMask from "react-input-mask";
+import { useLocation } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -95,6 +96,7 @@ export function CustomerFormDialog({
   customer,
 }: CustomerFormDialogProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
@@ -133,7 +135,7 @@ export function CustomerFormDialog({
       const res = await apiRequest(method, url, data);
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: Customer) => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       toast({
         title: "Success",
@@ -142,6 +144,10 @@ export function CustomerFormDialog({
           : "Customer added successfully",
       });
       onOpenChange(false);
+      // Navigate to detail page for new customers
+      if (!customer && data?.id) {
+        setLocation(`/customers/${data.id}`);
+      }
     },
     onError: (error: Error) => {
       toast({

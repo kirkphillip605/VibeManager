@@ -140,6 +140,12 @@ export interface IStorage {
   createContactRole(name: string): Promise<ContactRole>;
   updateContactRole(id: string, name: string): Promise<ContactRole | undefined>;
   deleteContactRole(id: string): Promise<boolean>;
+
+  // Square Integration methods
+  getSquareConfig(): Promise<any | undefined>;
+  createOrUpdateSquareConfig(config: any): Promise<any>;
+  updateSquareConfig(id: string, config: any): Promise<any | undefined>;
+  testSquareConnection(accessToken: string, environment: string): Promise<{ success: boolean; message: string }>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -148,7 +154,7 @@ export class PostgresStorage implements IStorage {
   async setAuditUser(userId: string): Promise<void> {
     this.currentUserId = userId;
     // Set the session variable for audit logging
-    await pool.query(`SET LOCAL "audit.user_id" = $1`, [userId]);
+    await db.execute(sql`SELECT set_config('app.current_user_id', ${userId}, true)`);
   }
 
   // User methods
@@ -801,6 +807,97 @@ export class PostgresStorage implements IStorage {
   async deleteContactRole(id: string): Promise<boolean> {
     await db.delete(schema.contactRoles).where(eq(schema.contactRoles.id, id));
     return true;
+  }
+
+  // Square Integration methods
+  async getSquareConfig(): Promise<any | undefined> {
+    const [config] = await db
+      .select()
+      .from(schema.squareConfig)
+      .where(eq(schema.squareConfig.isActive, true))
+      .limit(1);
+    return config;
+  }
+
+  async createOrUpdateSquareConfig(configData: any): Promise<any> {
+    // Deactivate any existing configs
+    await db
+      .update(schema.squareConfig)
+      .set({ isActive: false })
+      .where(eq(schema.squareConfig.isActive, true));
+
+    // Create new config
+    const [created] = await db
+      .insert(schema.squareConfig)
+      .values({
+        accessToken: configData.accessToken,
+        environment: configData.environment || 'sandbox',
+        isActive: true,
+      })
+      .returning();
+    return created;
+  }
+
+  async updateSquareConfig(id: string, configData: any): Promise<any | undefined> {
+    const [updated] = await db
+      .update(schema.squareConfig)
+      .set({
+        accessToken: configData.accessToken,
+        environment: configData.environment,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.squareConfig.id, id))
+      .returning();
+    return updated;
+  }
+
+  async testSquareConnection(accessToken: string, environment: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { SquareClient, SquareEnvironment } = await import('square');
+      
+      const client = new SquareClient({
+        token: accessToken,
+        environment: environment === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
+      });
+
+      // Test the connection by listing locations
+      const response = await client.locations.list();
+      
+      if (response && response.locations && response.locations.length > 0) {
+        // Update the config with test result
+        await db
+          .update(schema.squareConfig)
+          .set({
+            lastTested: new Date(),
+            testResult: 'success',
+          })
+          .where(eq(schema.squareConfig.accessToken, accessToken));
+
+        return {
+          success: true,
+          message: `Connection successful! Found ${response.locations.length} location(s).`,
+        };
+      } else {
+        return {
+          success: true,
+          message: 'Connection successful but no locations found.',
+        };
+      }
+    } catch (error: any) {
+      // Update the config with test failure
+      await db
+        .update(schema.squareConfig)
+        .set({
+          lastTested: new Date(),
+          testResult: 'failed',
+        })
+        .where(eq(schema.squareConfig.accessToken, accessToken));
+
+      return {
+        success: false,
+        message: error.message || 'Connection test failed. Please check your access token and environment.',
+      };
+    }
   }
 }
 

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import InputMask from "react-input-mask";
 import { Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +83,7 @@ export function VenueFormDialog({
   venue,
 }: VenueFormDialogProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   // Fetch venue types
   const { data: venueTypes = [] } = useQuery<VenueType[]>({
@@ -132,7 +134,7 @@ export function VenueFormDialog({
       const res = await apiRequest(method, url, data);
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: Venue) => {
       queryClient.invalidateQueries({ queryKey: ["/api/venues"] });
       toast({
         title: "Success",
@@ -141,6 +143,10 @@ export function VenueFormDialog({
           : "Venue added successfully",
       });
       onOpenChange(false);
+      // Navigate to detail page for new venues
+      if (!venue && data?.id) {
+        setLocation(`/venues/${data.id}`);
+      }
     },
     onError: (error: Error) => {
       toast({

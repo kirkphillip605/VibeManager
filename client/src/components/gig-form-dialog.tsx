@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { CalendarIcon, Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -84,6 +85,7 @@ interface GigFormDialogProps {
 
 export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const [venueSearchOpen, setVenueSearchOpen] = useState(false);
   const [personnelSearchOpen, setPersonnelSearchOpen] = useState(false);
@@ -149,16 +151,26 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
 
   const createGigMutation = useMutation({
     mutationFn: async (data: GigFormData) => {
-      const res = await apiRequest("POST", "/api/gigs", data);
+      // Convert Date objects to ISO strings for API
+      const payload = {
+        ...data,
+        startTime: data.startTime.toISOString(),
+        endTime: data.endTime.toISOString(),
+      };
+      const res = await apiRequest("POST", "/api/gigs", payload);
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: Gig) => {
       queryClient.invalidateQueries({ queryKey: ["/api/gigs"] });
       toast({
         title: "Success",
         description: gig ? "Gig updated successfully" : "Gig created successfully",
       });
       onOpenChange(false);
+      // Navigate to detail page for new gigs
+      if (!gig && data?.id) {
+        setLocation(`/gigs/${data.id}`);
+      }
     },
     onError: (error: Error) => {
       toast({
