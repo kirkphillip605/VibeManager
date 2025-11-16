@@ -28,17 +28,21 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-// Extend react-big-calendar with drag and drop
-const DragAndDropCalendar = withDragAndDrop(Calendar);
-
 // Define the event type for the calendar
-interface CalendarEvent extends BigCalendarEvent {
+interface CalendarEvent {
   id: string;
+  title: string;
+  start: Date;
+  end: Date;
   gigType?: string;
   customer?: string;
   venue?: string;
   status?: string;
+  resource?: Gig;
 }
+
+// Extend react-big-calendar with drag and drop
+const DragAndDropCalendar = withDragAndDrop<CalendarEvent>(Calendar);
 
 export default function CalendarPage() {
   const { toast } = useToast();
@@ -87,27 +91,16 @@ export default function CalendarPage() {
   const events: CalendarEvent[] = gigs.map((gig) => {
     const venue = venues.find(v => v.id === gig.venueId);
     const customer = customers.find(c => c.id === gig.customerId);
-    const eventDate = new Date(gig.eventDate);
-    
-    // Parse time strings (HH:MM format) and set on event date
-    const startTime = gig.startTime ? gig.startTime.split(':') : ['18', '00'];
-    const endTime = gig.endTime ? gig.endTime.split(':') : ['23', '00'];
-    
-    const start = new Date(eventDate);
-    start.setHours(parseInt(startTime[0]), parseInt(startTime[1]), 0, 0);
-    
-    const end = new Date(eventDate);
-    end.setHours(parseInt(endTime[0]), parseInt(endTime[1]), 0, 0);
     
     return {
       id: gig.id,
       title: gig.name || 'Unnamed Gig',
-      start,
-      end,
-      gigType: gig.gigTypeId,
+      start: new Date(gig.startTime),
+      end: new Date(gig.endTime),
+      gigType: gig.gigTypeId || undefined,
       customer: customer?.businessName || `${customer?.firstName} ${customer?.lastName}`,
       venue: venue?.name,
-      status: gig.status || 'Scheduled',
+      status: gig.status || 'pending',
       resource: gig, // Store the full gig object for reference
     };
   });
@@ -117,18 +110,11 @@ export default function CalendarPage() {
     ({ event, start, end }: any) => {
       const gig = event.resource as Gig;
       
-      // Extract time from the dropped times
-      const startHours = start.getHours().toString().padStart(2, '0');
-      const startMinutes = start.getMinutes().toString().padStart(2, '0');
-      const endHours = end.getHours().toString().padStart(2, '0');
-      const endMinutes = end.getMinutes().toString().padStart(2, '0');
-      
       updateGigMutation.mutate({
         id: gig.id,
         data: {
-          eventDate: start.toISOString().split('T')[0],
-          startTime: `${startHours}:${startMinutes}`,
-          endTime: `${endHours}:${endMinutes}`,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
         },
       });
     },
@@ -140,13 +126,11 @@ export default function CalendarPage() {
     ({ event, start, end }: any) => {
       const gig = event.resource as Gig;
       
-      const endHours = end.getHours().toString().padStart(2, '0');
-      const endMinutes = end.getMinutes().toString().padStart(2, '0');
-      
       updateGigMutation.mutate({
         id: gig.id,
         data: {
-          endTime: `${endHours}:${endMinutes}`,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
         },
       });
     },
@@ -272,30 +256,30 @@ export default function CalendarPage() {
         <DragAndDropCalendar
           localizer={localizer}
           events={events}
-          startAccessor="start"
-          endAccessor="end"
+          startAccessor={(event: CalendarEvent) => event.start}
+          endAccessor={(event: CalendarEvent) => event.end}
           style={{ height: 'calc(100vh - 120px)' }}
           date={currentDate}
           onNavigate={setCurrentDate}
           onEventDrop={handleEventDrop}
           onEventResize={handleEventResize}
-          onSelectEvent={handleSelectEvent}
+          onSelectEvent={(event: any) => handleSelectEvent(event)}
           onSelectSlot={handleSelectSlot}
           selectable
           resizable
           components={{
             toolbar: CustomToolbar,
-            event: EventComponent,
+            event: EventComponent as any,
           }}
           defaultView="month"
           views={['month', 'week', 'day']}
           step={30}
           showMultiDayTimes
-          eventPropGetter={(event: CalendarEvent) => ({
+          eventPropGetter={(event: any) => ({
             className: `calendar-event ${event.status?.toLowerCase()}`,
             style: {
-              backgroundColor: event.status === 'Completed' ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
-              color: event.status === 'Completed' ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
+              backgroundColor: event.status === 'completed' ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
+              color: event.status === 'completed' ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
               border: 'none',
               borderRadius: '4px',
             },

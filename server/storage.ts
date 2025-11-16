@@ -219,11 +219,14 @@ export class PostgresStorage implements IStorage {
   }
 
   async getPersonnelByUserId(userId: string): Promise<Personnel | undefined> {
-    const [personnel] = await db
+    const [user] = await db
       .select()
-      .from(schema.personnel)
-      .where(eq(schema.personnel.userId, userId));
-    return personnel;
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+    
+    if (!user || !user.personnelId) return undefined;
+    
+    return await this.getPersonnel(user.personnelId);
   }
 
   async getPersonnelByEmail(email: string): Promise<Personnel | undefined> {
@@ -254,24 +257,15 @@ export class PostgresStorage implements IStorage {
       if (createUserAccount && personnel.email) {
         const existingUser = await this.getUserByEmail(personnel.email);
         if (!existingUser) {
-          const [user] = await tx
+          await tx
             .insert(schema.users)
             .values({
               email: personnel.email,
-              username: personnel.email,
-              password: null, // They'll set it on first login
+              passwordHash: null, // They'll set it on first login
               role: "personnel",
               personnelId: createdPersonnel.id,
             })
             .returning();
-
-          // Update personnel with user ID
-          await tx
-            .update(schema.personnel)
-            .set({ userId: user.id })
-            .where(eq(schema.personnel.id, createdPersonnel.id));
-          
-          createdPersonnel.userId = user.id;
         }
       }
 
@@ -390,8 +384,8 @@ export class PostgresStorage implements IStorage {
   async getContactsByCustomer(customerId: string): Promise<Contact[]> {
     const contactCustomers = await db
       .select()
-      .from(schema.contactCustomers)
-      .where(eq(schema.contactCustomers.customerId, customerId));
+      .from(schema.customerContacts)
+      .where(eq(schema.customerContacts.customerId, customerId));
 
     if (contactCustomers.length === 0) return [];
 
@@ -404,8 +398,8 @@ export class PostgresStorage implements IStorage {
   async getContactsByVenue(venueId: string): Promise<Contact[]> {
     const contactVenues = await db
       .select()
-      .from(schema.contactVenues)
-      .where(eq(schema.contactVenues.venueId, venueId));
+      .from(schema.venueContacts)
+      .where(eq(schema.venueContacts.venueId, venueId));
 
     if (contactVenues.length === 0) return [];
 

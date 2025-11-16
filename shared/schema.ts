@@ -544,6 +544,11 @@ export const insertFileSchema = createInsertSchema(files).omit({
   createdAt: true,
 });
 
+export const insertPersonnelFileSchema = createInsertSchema(personnelFiles).omit({
+  id: true,
+  uploadedAt: true,
+});
+
 // Lookup table insert schemas
 export const insertVenueTypeSchema = createInsertSchema(venueTypes).omit({
   id: true,
@@ -606,6 +611,12 @@ export type InsertCheckIn = z.infer<typeof insertCheckInSchema>;
 
 export type FileRecord = typeof files.$inferSelect;
 export type InsertFile = z.infer<typeof insertFileSchema>;
+
+export type PersonnelFile = typeof personnelFiles.$inferSelect;
+export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
+
+// Alias for backward compatibility
+export type InsertPersonnelPayout = InsertPayout;
 
 // Lookup types
 export type VenueType = typeof venueTypes.$inferSelect;

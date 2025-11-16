@@ -54,7 +54,12 @@ export default function PersonnelDetailPage() {
   });
 
   // Fetch personnel statistics
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<{
+    totalGigs: number;
+    gigsThisMonth: number;
+    totalEarnings: number;
+    documentsUploaded: number;
+  }>({
     queryKey: [`/api/personnel/${personnelId}/stats`],
     enabled: !!personnelId,
   });

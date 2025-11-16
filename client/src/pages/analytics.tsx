@@ -92,17 +92,17 @@ export default function Analytics() {
 
   // Filter gigs within date range
   const filteredGigs = gigs.filter(gig => {
-    const gigDate = new Date(gig.eventDate);
+    const gigDate = new Date(gig.startTime);
     return gigDate >= startDate && gigDate <= endDate;
   });
 
   // Calculate metrics
-  const totalRevenue = filteredGigs.reduce((sum, gig) => sum + (Number(gig.totalAmount) || 0), 0);
+  const totalRevenue = 0; // Would need to come from invoices API
   const totalGigs = filteredGigs.length;
-  const completedGigs = filteredGigs.filter(g => g.status === 'Completed').length;
+  const completedGigs = filteredGigs.filter(g => g.status === 'completed').length;
   const upcomingGigs = filteredGigs.filter(g => {
-    const gigDate = new Date(g.eventDate);
-    return gigDate >= new Date() && g.status !== 'Cancelled';
+    const gigDate = new Date(g.startTime);
+    return gigDate >= new Date() && g.status !== 'cancelled';
   }).length;
   const averageGigValue = totalGigs > 0 ? totalRevenue / totalGigs : 0;
   const completionRate = totalGigs > 0 ? (completedGigs / totalGigs) * 100 : 0;
@@ -128,10 +128,10 @@ export default function Analytics() {
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
     const monthGigs = filteredGigs.filter(gig => {
-      const gigDate = new Date(gig.eventDate);
+      const gigDate = new Date(gig.startTime);
       return gigDate >= monthStart && gigDate <= monthEnd;
     });
-    const revenue = monthGigs.reduce((sum, gig) => sum + (Number(gig.totalAmount) || 0), 0);
+    const revenue = 0; // Would need to come from invoices API
     return {
       month: format(month, 'MMM'),
       revenue,
@@ -154,13 +154,13 @@ export default function Analytics() {
   // Top customers by revenue
   const customerRevenue = customers.map(customer => {
     const customerGigs = filteredGigs.filter(g => g.customerId === customer.id);
-    const revenue = customerGigs.reduce((sum, gig) => sum + (Number(gig.totalAmount) || 0), 0);
+    const revenue = 0; // Would need to come from invoices API
     return {
       name: customer.businessName || `${customer.firstName} ${customer.lastName}`,
       revenue,
       gigs: customerGigs.length,
     };
-  }).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  }).sort((a, b) => b.gigs - a.gigs).slice(0, 5);
 
   // Top venues
   const venueStats = venues.map(venue => {
@@ -168,7 +168,7 @@ export default function Analytics() {
     return {
       name: venue.name,
       gigs: venueGigs.length,
-      revenue: venueGigs.reduce((sum, gig) => sum + (Number(gig.totalAmount) || 0), 0),
+      revenue: 0, // Would need to come from invoices API
     };
   }).sort((a, b) => b.gigs - a.gigs).slice(0, 5);
 

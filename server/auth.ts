@@ -10,7 +10,6 @@ declare global {
     interface User {
       id: string;
       email: string;
-      username: string;
       role: "owner" | "manager" | "personnel";
       personnelId?: string | null;
     }
@@ -35,7 +34,6 @@ passport.use(
         return done(null, {
           id: validUser.id,
           email: validUser.email,
-          username: validUser.email, // Use email as username since username doesn't exist in DB
           role: validUser.role,
           personnelId: validUser.personnelId,
         });
@@ -61,7 +59,6 @@ passport.deserializeUser(async (id: string, done) => {
     done(null, {
       id: user.id,
       email: user.email,
-      username: user.username,
       role: user.role,
       personnelId: user.personnelId,
     });

@@ -100,7 +100,6 @@ export function ContactFormDialog({
         email: contact.email || "",
         phone: contact.phone || "",
         title: contact.title || "",
-        contactRoleId: contact.contactRoleId || "",
       });
     } else {
       form.reset();
