@@ -11,6 +11,7 @@ import {
   Music,
   ChevronLeft,
   Edit,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +26,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Venue, VenueType, Contact, Gig } from "@shared/schema";
 import { VenueFormDialog } from "@/components/venue-form-dialog";
+import { ContactFormDialog } from "@/components/contact-form-dialog";
+import { GigFormDialog } from "@/components/gig-form-dialog";
 
 export default function VenueDetailPage() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const venueId = params.id;
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [gigDialogOpen, setGigDialogOpen] = useState(false);
 
   // Fetch venue details
   const { data: venue, isLoading: loadingVenue } = useQuery<Venue>({
@@ -189,7 +194,17 @@ export default function VenueDetailPage() {
               <CardTitle>Venue Contacts</CardTitle>
               <CardDescription>People associated with this venue</CardDescription>
             </div>
-            <Badge variant="secondary">{contacts.length} contacts</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{contacts.length} contacts</Badge>
+              <Button
+                size="sm"
+                onClick={() => setContactDialogOpen(true)}
+                data-testid="button-add-contact"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Contact
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingContacts ? (
@@ -201,6 +216,14 @@ export default function VenueDetailPage() {
               <div className="text-center py-8">
                 <UsersIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">No contacts associated</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setContactDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Contact
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -243,7 +266,17 @@ export default function VenueDetailPage() {
               <CardTitle>Gigs at this Venue</CardTitle>
               <CardDescription>Scheduled performances</CardDescription>
             </div>
-            <Badge variant="secondary">{gigs.length} total</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{gigs.length} total</Badge>
+              <Button
+                size="sm"
+                onClick={() => setGigDialogOpen(true)}
+                data-testid="button-create-gig"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Create Gig
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingGigs ? (
@@ -255,6 +288,14 @@ export default function VenueDetailPage() {
               <div className="text-center py-8">
                 <Music className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">No gigs scheduled</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setGigDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Gig
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -307,6 +348,18 @@ export default function VenueDetailPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         venue={venue}
+      />
+
+      {/* Add Contact Dialog */}
+      <ContactFormDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+      />
+
+      {/* Create Gig Dialog */}
+      <GigFormDialog
+        open={gigDialogOpen}
+        onOpenChange={setGigDialogOpen}
       />
     </div>
   );
