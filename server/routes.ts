@@ -77,6 +77,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Set audit user for all authenticated requests
+  app.use(asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated() && req.user) {
+      const userId = (req.user as any).id;
+      await storage.setAuditUser(userId);
+    } else {
+      // Set system user for unauthenticated requests
+      await storage.setAuditUser('00000000-0000-0000-0000-000000000000');
+    }
+    next();
+  }));
+
   // ===== AUTHENTICATION ROUTES =====
   
   // Register
