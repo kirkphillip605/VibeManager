@@ -1,0 +1,96 @@
+Key Features & Pages to Build:
+
+
+1. Authentication (Auth.js)
+
+* Create a clean, centered Login Page (/login) with "Email" and "Password" fields.
+* Implement the Auth.js "Credentials" provider logic.
+* All other pages must be protected and require a valid session.
+
+2. Role-Based Access Control (RBAC)
+
+This is critical. The UI must change based on the logged-in user's role.
+* Owner/Manager: Can see all navigation links and perform all CRUD operations.
+* Personnel (DJ): Has a limited view. Can only see "My Profile," "My Gigs," and "My Payouts."
+
+3. Main Layout
+
+* Create a main app layout with a collapsible sidebar navigation (use shadcn/ui).
+* The sidebar links should change based on the user's role.
+
+4. Dashboard (Owner/Manager)
+
+* The main page after login (/dashboard).
+* Show "at-a-glance" info:
+    * A list/card view of "Upcoming Gigs" (next 7 days).
+    * A list/card view of "Pending Gigs" (not yet confirmed).
+
+5. Gigs Module (The App's Core)
+
+* Page (/gigs):
+    * A data table (using shadcn/ui) of all gigs.
+    * Columns: Gig Name, Customer, Venue, Start Time, End Time, Status.
+    * Must be searchable and filterable (by status, date range).
+    * A "Create Gig" button.
+* Create/Edit Gig Form (use a Modal): This is the most complex form.
+    * name (text)
+    * start_time, end_time (datetime pickers)
+    * customer (a searchable dropdown/combobox to select from the customers table)
+    * venue (a searchable dropdown/combobox to select from the venues table)
+    * gig_type (a dropdown populated from the gig_types lookup table)
+    * assign_personnel (a multi-select combobox to choose one or more DJs from the personnel table)
+    * notes (textarea)
+    * status (dropdown: 'Pending', 'Confirmed', 'Cancelled')
+* Recurring Gigs: Add a "Recurring" checkbox. When checked, show simple options (e.g., "Weekly," "Monthly") and an "Occurrences" number input. (The backend logic will create the series).
+* Gig Detail Page (/gigs/[id]):
+    * Show all gig details.
+    * Financials Section:
+        * Payouts: Show a list of payouts made for this gig. Have a form here to add a payout:
+            * personnel (dropdown of DJs assigned to this gig)
+            * amount (number)
+            * date_paid (datepicker)
+            * payment_method (dropdown)
+        * Invoices: Show a list of invoices. Have a simple form to log an external Square invoice:
+            * square_invoice_id (text)
+            * amount (number)
+            * status (dropdown: 'Sent', 'Paid')
+
+6. Personnel Module (Owner/Manager View)
+
+* Page (/personnel):
+    * A data table of all personnel. Columns: Name, Email, Phone, Type.
+* Create/Edit Personnel Form (Modal):
+    * All fields: first_name, last_name, email, phone, address fields, dob, ssn.
+    * personnel_type (dropdown from personnel_types table).
+    * "Is Active" (checkbox).
+* Personnel Detail Page (/personnel/[id]):
+    * Show all info.
+    * Personnel Files: A section to upload files (ID, W-4). Show a list of uploaded files (personnel_files).
+    * Invite User: A button to "Create Login." This should create a users record in the database linked to this personnel record.
+
+7. Customers, Venues, & Contacts Modules (Owner/Manager View)
+
+* Create separate pages (/customers, /venues, /contacts).
+* Each page should have a data table for listing all records.
+* Each should have a "Create" button that opens a modal with a simple CRUD form for all the relevant fields.
+* Customer/Venue Detail Pages: On the detail page for a customer or venue, show their info and a list of their associated Contacts (with the ability to add/remove contacts).
+
+8. Personnel Portal (Personnel View)
+
+When a user with the 'personnel' role logs in, they see a limited UI:
+* Page (/profile): A form to view/edit their own personnel info.
+* Page (/my-gigs): A data table of only gigs they are assigned to.
+* Page (/my-payouts): A data table showing their payout history.
+* Page (/my-documents): A section to view and upload their own files (W-4, ID, etc.).
+
+9. Admin Settings (Owner View)
+
+* Page (/settings):
+    * Create simple, re-usable CRUD interfaces (data table + create/edit modal) for managing the "lookup tables":
+        * Venue Types
+        * Personnel Types
+        * Gig Types
+        * Payment Methods
+        * Document Types
+        * Contact Roles
+This gives the owner full control over the app's dropdown options.

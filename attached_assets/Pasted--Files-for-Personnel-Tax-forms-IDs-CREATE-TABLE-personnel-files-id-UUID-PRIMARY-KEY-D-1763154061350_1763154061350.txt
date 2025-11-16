@@ -1,0 +1,53 @@
+-- Files for Personnel (Tax forms, IDs)
+CREATE TABLE "personnel_files" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "personnel_id" UUID NOT NULL REFERENCES "personnel"("id") ON DELETE CASCADE,
+    "document_type_id" UUID REFERENCES "document_types"("id") ON DELETE SET NULL,
+    "file_path" TEXT NOT NULL, -- e.g., "s3://bucket-name/personnel/file-uuid.pdf"
+    "file_name" TEXT NOT NULL, -- "W-4_2025.pdf"
+    "file_type" TEXT,          -- "application/pdf"
+    "file_size_bytes" BIGINT,
+    "uploaded_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE "venues" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "name" TEXT NOT NULL,
+    "address" TEXT,
+    "city" TEXT,
+    "state" TEXT,
+    "zip" TEXT,
+    "phone" TEXT,
+    "website" TEXT,
+    "occupancy" INT,
+    "venue_type_id" UUID REFERENCES "venue_types"("id") ON DELETE SET NULL,
+    "notes" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Enum for customer type
+CREATE TYPE customer_type AS ENUM ('business', 'person');
+CREATE TABLE "customers" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "type" customer_type NOT NULL,
+    "business_name" TEXT,
+    "first_name" TEXT,
+    "last_name" TEXT,
+    "primary_email" TEXT,
+    "primary_phone" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE "gigs" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "name" TEXT NOT NULL,
+    "start_time" TIMESTAMPTZ NOT NULL,
+    "end_time" TIMESTAMPTZ NOT NULL,
+    "customer_id" UUID NOT NULL REFERENCES "customers"("id") ON DELETE RESTRICT,
+    "venue_id" UUID NOT NULL REFERENCES "venues"("id") ON DELETE RESTRICT,
+    "gig_type_id" UUID REFERENCES "gig_types"("id") ON DELETE SET NULL,
+    "status" TEXT DEFAULT 'pending', -- e.g., 'pending', 'confirmed', 'cancelled'
+    "notes" TEXT,
+    "recurrence_group_id" UUID, -- Shared UUID for all gigs in a recurring series
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

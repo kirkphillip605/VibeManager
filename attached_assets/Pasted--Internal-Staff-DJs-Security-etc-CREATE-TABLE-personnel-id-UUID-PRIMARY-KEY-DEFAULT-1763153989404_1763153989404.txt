@@ -1,0 +1,113 @@
+-- Internal Staff (DJs, Security, etc.)
+CREATE TABLE "personnel" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "first_name" TEXT NOT NULL,
+    "middle_name" TEXT,
+    "last_name" TEXT NOT NULL,
+    "email" TEXT UNIQUE NOT NULL,
+    "phone" TEXT UNIQUE,
+    "dob" DATE,           -- Date of Birth
+    "ssn" TEXT,           -- Encrypt this in the application!
+    "address1" TEXT,
+    "address2" TEXT,
+    "city" TEXT,
+    "state" TEXT,
+    "zip" TEXT,
+    "personnel_type_id" UUID REFERENCES "personnel_types"("id") ON DELETE SET NULL,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Add the foreign key constraint from users to personnel
+ALTER TABLE "users"
+ADD CONSTRAINT "fk_user_personnel"
+FOREIGN KEY ("personnel_id")
+REFERENCES "personnel"("id")
+ON DELETE SET NULL;
+-- External Contacts (Venue Managers, Customer Contacts)
+CREATE TABLE "contacts" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "first_name" TEXT NOT NULL,
+    "last_name" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "title" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Add uniqueness constraint to avoid duplicate contacts
+    UNIQUE("email", "phone")
+);
+-- Files for Personnel (Tax forms, IDs)
+CREATE TABLE "personnel_files" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "personnel_id" UUID NOT NULL REFERENCES "personnel"("id") ON DELETE CASCADE,
+    "document_type_id" UUID REFERENCES "document_types"("id") ON DELETE SET NULL,
+    "file_path" TEXT NOT NULL, -- e.g., "s3://bucket-name/personnel/file-uuid.pdf"
+    "file_name" TEXT NOT NULL, -- "W-4_2025.pdf"
+    "file_type" TEXT,          -- "application/pdf"
+    "file_size_bytes" BIGINT,
+    "uploaded_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE "venues" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "name" TEXT NOT NULL,
+    "address" TEXT,
+    "city" TEXT,
+    "state" TEXT,
+    "zip" TEXT,
+    "phone" TEXT,
+    "website" TEXT,
+    "occupancy" INT,
+    "venue_type_id" UUID REFERENCES "venue_types"("id") ON DELETE SET NULL,
+    "notes" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Enum for customer type
+CREATE TYPE customer_type AS ENUM ('business', 'person');
+CREATE TABLE "customers" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "type" customer_type NOT NULL,
+    "business_name" TEXT,
+    "first_name" TEXT,
+    "last_name" TEXT,
+    "primary_email" TEXT,
+    "primary_phone" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE "gigs" (
+    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "name" TEXT NOT NULL,
+    "start_time" TIMESTAMPTZ NOT NULL,
+    "end_time" TIMESTAMPTZ NOT NULL,
+    "customer_id" UUID NOT NULL REFERENCES "customers"("id") ON DELETE RESTRICT,
+    "venue_id" UUID NOT NULL REFERENCES "venues"("id") ON DELETE RESTRICT,
+    "gig_type_id" UUID REFERENCES "gig_types"("id") ON DELETE SET NULL,
+    "status" TEXT DEFAULT 'pending', -- e.g., 'pending', 'confirmed', 'cancelled'
+    "notes" TEXT,
+    "recurrence_group_id" UUID, -- Shared UUID for all gigs in a recurring series
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Links Gigs to Personnel (allows multiple DJs per gig)
+CREATE TABLE "gig_personnel" (
+    "gig_id" UUID NOT NULL REFERENCES "gigs"("id") ON DELETE CASCADE,
+    "personnel_id" UUID NOT NULL REFERENCES "personnel"("id") ON DELETE CASCADE,
+    "role_notes" TEXT, -- e.g., "Main DJ", "MC", "Technician"
+    PRIMARY KEY ("gig_id", "personnel_id")
+);
+-- Links Customers to Contacts
+CREATE TABLE "customer_contacts" (
+    "customer_id" UUID NOT NULL REFERENCES "customers"("id") ON DELETE CASCADE,
+    "contact_id" UUID NOT NULL REFERENCES "contacts"("id") ON DELETE CASCADE,
+    "contact_role_id" UUID REFERENCES "contact_roles"("id") ON DELETE SET NULL,
+    PRIMARY KEY ("customer_id", "contact_id")
+);
+-- Links Venues to Contacts
+CREATE TABLE "venue_contacts" (
+    "venue_id" UUID NOT NULL REFERENCES "venues"("id") ON DELETE CASCADE,
+    "contact_id" UUID NOT NULL REFERENCES "contacts"("id") ON DELETE CASCADE,
+    "contact_role_id" UUID REFERENCES "contact_roles"("id") ON DELETE SET NULL,
+    PRIMARY KEY ("venue_id", "contact_id")
+);
