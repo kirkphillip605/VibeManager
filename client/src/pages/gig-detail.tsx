@@ -1,6 +1,7 @@
 import { useParams, useLocation } from "wouter";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { GigFormDialog } from "@/components/gig-form-dialog";
 import { format } from "date-fns";
 import {
   Calendar,
@@ -99,6 +100,7 @@ export default function GigDetailPage() {
 
   const [isPayoutOpen, setIsPayoutOpen] = useState(false);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Fetch gig details
   const { data: gig, isLoading: loadingGig } = useQuery<Gig>({
@@ -296,7 +298,7 @@ export default function GigDetailPage() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setLocation(`/gigs?edit=${gigId}`)}>
+        <Button onClick={() => setEditDialogOpen(true)}>
           <Edit className="h-4 w-4" />
           Edit Gig
         </Button>
@@ -715,6 +717,13 @@ export default function GigDetailPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Gig Dialog */}
+      <GigFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        gig={gig}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useParams, useLocation } from "wouter";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { PersonnelFormDialog } from "@/components/personnel-form-dialog";
 import {
   Users,
   Mail,
@@ -41,6 +42,7 @@ export default function PersonnelDetailPage() {
   const [, setLocation] = useLocation();
   const personnelId = params.id;
   const [showSSN, setShowSSN] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Fetch personnel details
   const { data: personnel, isLoading: loadingPersonnel } = useQuery<Personnel>({
@@ -140,7 +142,7 @@ export default function PersonnelDetailPage() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setLocation(`/personnel?edit=${personnelId}`)}>
+        <Button onClick={() => setEditDialogOpen(true)}>
           <Edit className="h-4 w-4" />
           Edit Personnel
         </Button>
@@ -349,6 +351,13 @@ export default function PersonnelDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Personnel Dialog */}
+      <PersonnelFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        personnel={personnel}
+      />
     </div>
   );
 }
