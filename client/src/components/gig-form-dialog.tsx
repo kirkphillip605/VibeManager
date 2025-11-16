@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Form,
   FormControl,
@@ -51,6 +52,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Gig, Customer, Venue, Personnel, GigType } from "@shared/schema";
+import { CustomerFormDialog } from "@/components/customer-form-dialog";
+import { VenueFormDialog } from "@/components/venue-form-dialog";
 
 const gigFormSchema = z.object({
   name: z.string().min(1, "Gig name is required"),
@@ -84,6 +87,8 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const [venueSearchOpen, setVenueSearchOpen] = useState(false);
   const [personnelSearchOpen, setPersonnelSearchOpen] = useState(false);
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+  const [venueDialogOpen, setVenueDialogOpen] = useState(false);
 
   // Fetch data for dropdowns
   const { data: customers = [] } = useQuery<Customer[]>({
@@ -206,42 +211,20 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
               />
 
               {/* Date and Time */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <FormField
                   control={form.control}
                   name="startTime"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Start Date & Time</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              data-testid="button-start-time"
-                            >
-                              <CalendarIcon className="h-4 w-4" />
-                              {field.value ? (
-                                format(field.value, "PPP p")
-                              ) : (
-                                <span>Pick date & time</span>
-                              )}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <DateTimePicker
+                          date={field.value}
+                          setDate={field.onChange}
+                          placeholder="Pick start date & time"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -253,35 +236,13 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>End Date & Time</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              data-testid="button-end-time"
-                            >
-                              <CalendarIcon className="h-4 w-4" />
-                              {field.value ? (
-                                format(field.value, "PPP p")
-                              ) : (
-                                <span>Pick date & time</span>
-                              )}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <DateTimePicker
+                          date={field.value}
+                          setDate={field.onChange}
+                          placeholder="Pick end date & time"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -296,56 +257,67 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Customer</FormLabel>
-                      <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={customerSearchOpen}
-                              className="justify-between"
-                              data-testid="button-select-customer"
-                            >
-                              {field.value
-                                ? customers.find((c) => c.id === field.value)?.businessName ||
-                                  customers.find((c) => c.id === field.value)?.firstName
-                                : "Select customer"}
-                              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search customers..." />
-                            <CommandEmpty>No customer found.</CommandEmpty>
-                            <CommandGroup>
-                              <ScrollArea className="h-[200px]">
-                                {customers.map((customer) => (
-                                  <CommandItem
-                                    key={customer.id}
-                                    value={customer.businessName || customer.firstName || ""}
-                                    onSelect={() => {
-                                      field.onChange(customer.id);
-                                      setCustomerSearchOpen(false);
-                                    }}
-                                  >
-                                    {customer.businessName || 
-                                     `${customer.firstName} ${customer.lastName}`}
-                                    <Check
-                                      className={cn(
-                                        "ml-auto h-4 w-4",
-                                        field.value === customer.id
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                  </CommandItem>
-                                ))}
-                              </ScrollArea>
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <div className="flex gap-2">
+                        <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={customerSearchOpen}
+                                className="justify-between flex-1"
+                                data-testid="button-select-customer"
+                              >
+                                {field.value
+                                  ? customers.find((c) => c.id === field.value)?.businessName ||
+                                    customers.find((c) => c.id === field.value)?.firstName
+                                  : "Select customer"}
+                                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0">
+                            <Command>
+                              <CommandInput placeholder="Search customers..." />
+                              <CommandEmpty>No customer found.</CommandEmpty>
+                              <CommandGroup>
+                                <ScrollArea className="h-[200px]">
+                                  {customers.map((customer) => (
+                                    <CommandItem
+                                      key={customer.id}
+                                      value={customer.businessName || customer.firstName || ""}
+                                      onSelect={() => {
+                                        field.onChange(customer.id);
+                                        setCustomerSearchOpen(false);
+                                      }}
+                                    >
+                                      {customer.businessName || 
+                                       `${customer.firstName} ${customer.lastName}`}
+                                      <Check
+                                        className={cn(
+                                          "ml-auto h-4 w-4",
+                                          field.value === customer.id
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                    </CommandItem>
+                                  ))}
+                                </ScrollArea>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setCustomerDialogOpen(true)}
+                          data-testid="button-new-customer"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -357,52 +329,63 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Venue</FormLabel>
-                      <Popover open={venueSearchOpen} onOpenChange={setVenueSearchOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={venueSearchOpen}
-                              className="justify-between"
-                              data-testid="button-select-venue"
-                            >
-                              {field.value
-                                ? venues.find((v) => v.id === field.value)?.name
-                                : "Select venue"}
-                              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search venues..." />
-                            <CommandEmpty>No venue found.</CommandEmpty>
-                            <CommandGroup>
-                              <ScrollArea className="h-[200px]">
-                                {venues.map((venue) => (
-                                  <CommandItem
-                                    key={venue.id}
-                                    value={venue.name}
-                                    onSelect={() => {
-                                      field.onChange(venue.id);
-                                      setVenueSearchOpen(false);
-                                    }}
-                                  >
-                                    {venue.name}
-                                    <Check
-                                      className={cn(
-                                        "ml-auto h-4 w-4",
-                                        field.value === venue.id ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                  </CommandItem>
-                                ))}
-                              </ScrollArea>
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <div className="flex gap-2">
+                        <Popover open={venueSearchOpen} onOpenChange={setVenueSearchOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={venueSearchOpen}
+                                className="justify-between flex-1"
+                                data-testid="button-select-venue"
+                              >
+                                {field.value
+                                  ? venues.find((v) => v.id === field.value)?.name
+                                  : "Select venue"}
+                                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0">
+                            <Command>
+                              <CommandInput placeholder="Search venues..." />
+                              <CommandEmpty>No venue found.</CommandEmpty>
+                              <CommandGroup>
+                                <ScrollArea className="h-[200px]">
+                                  {venues.map((venue) => (
+                                    <CommandItem
+                                      key={venue.id}
+                                      value={venue.name}
+                                      onSelect={() => {
+                                        field.onChange(venue.id);
+                                        setVenueSearchOpen(false);
+                                      }}
+                                    >
+                                      {venue.name}
+                                      <Check
+                                        className={cn(
+                                          "ml-auto h-4 w-4",
+                                          field.value === venue.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                    </CommandItem>
+                                  ))}
+                                </ScrollArea>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setVenueDialogOpen(true)}
+                          data-testid="button-new-venue"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -667,6 +650,30 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
           </Form>
         </ScrollArea>
       </DialogContent>
+
+      {/* Customer creation dialog */}
+      <CustomerFormDialog
+        open={customerDialogOpen}
+        onOpenChange={(isOpen) => {
+          setCustomerDialogOpen(isOpen);
+          if (!isOpen) {
+            // Refresh customers list when dialog closes
+            queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+          }
+        }}
+      />
+
+      {/* Venue creation dialog */}
+      <VenueFormDialog
+        open={venueDialogOpen}
+        onOpenChange={(isOpen) => {
+          setVenueDialogOpen(isOpen);
+          if (!isOpen) {
+            // Refresh venues list when dialog closes
+            queryClient.invalidateQueries({ queryKey: ["/api/venues"] });
+          }
+        }}
+      />
     </Dialog>
   );
 }

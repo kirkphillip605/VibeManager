@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -24,11 +25,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Customer, Contact, Gig } from "@shared/schema";
+import { CustomerFormDialog } from "@/components/customer-form-dialog";
 
 export default function CustomerDetailPage() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const customerId = params.id;
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Fetch customer details
   const { data: customer, isLoading: loadingCustomer } = useQuery<Customer>({
@@ -112,7 +115,7 @@ export default function CustomerDetailPage() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setLocation(`/customers?edit=${customerId}`)}>
+        <Button onClick={() => setEditDialogOpen(true)}>
           <Edit className="h-4 w-4" />
           Edit Customer
         </Button>
@@ -273,6 +276,13 @@ export default function CustomerDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Customer Dialog */}
+      <CustomerFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        customer={customer}
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -23,11 +24,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Venue, VenueType, Contact, Gig } from "@shared/schema";
+import { VenueFormDialog } from "@/components/venue-form-dialog";
 
 export default function VenueDetailPage() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const venueId = params.id;
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Fetch venue details
   const { data: venue, isLoading: loadingVenue } = useQuery<Venue>({
@@ -117,7 +120,7 @@ export default function VenueDetailPage() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setLocation(`/venues?edit=${venueId}`)}>
+        <Button onClick={() => setEditDialogOpen(true)}>
           <Edit className="h-4 w-4" />
           Edit Venue
         </Button>
@@ -298,6 +301,13 @@ export default function VenueDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Venue Dialog */}
+      <VenueFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        venue={venue}
+      />
     </div>
   );
 }

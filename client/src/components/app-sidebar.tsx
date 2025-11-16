@@ -54,46 +54,6 @@ export function AppSidebar() {
           url: "/calendar",
           icon: Calendar,
         },
-        {
-          title: "Analytics",
-          url: "/analytics",
-          icon: BarChart3,
-        },
-        {
-          title: "Gigs",
-          url: "/gigs",
-          icon: Music,
-        },
-        {
-          title: "Invoices",
-          url: "/invoices",
-          icon: FileText,
-        },
-        {
-          title: "Files",
-          url: "/files",
-          icon: FolderOpen,
-        },
-        {
-          title: "Personnel",
-          url: "/personnel",
-          icon: Users,
-        },
-        {
-          title: "Customers",
-          url: "/customers",
-          icon: UserCheck,
-        },
-        {
-          title: "Venues",
-          url: "/venues",
-          icon: Building2,
-        },
-        {
-          title: "Contacts",
-          url: "/contacts",
-          icon: FileText,
-        },
       ]
     : [
         {
@@ -122,6 +82,66 @@ export function AppSidebar() {
           icon: FileText,
         },
       ];
+
+  const clientsGigsItems = isOwnerOrManager
+    ? [
+        {
+          title: "Customers",
+          url: "/customers",
+          icon: UserCheck,
+        },
+        {
+          title: "Contacts",
+          url: "/contacts",
+          icon: FileText,
+        },
+        {
+          title: "Venues",
+          url: "/venues",
+          icon: Building2,
+        },
+        {
+          title: "Gigs",
+          url: "/gigs",
+          icon: Music,
+        },
+      ]
+    : [];
+
+  const paymentsItems = isOwnerOrManager
+    ? [
+        {
+          title: "Invoices",
+          url: "/invoices",
+          icon: DollarSign,
+        },
+      ]
+    : [];
+
+  const djItems = isOwnerOrManager
+    ? [
+        {
+          title: "Personnel",
+          url: "/personnel",
+          icon: Users,
+        },
+      ]
+    : [];
+
+  const additionalItems = isOwnerOrManager
+    ? [
+        {
+          title: "Analytics",
+          url: "/analytics",
+          icon: BarChart3,
+        },
+        {
+          title: "Files",
+          url: "/files",
+          icon: FolderOpen,
+        },
+      ]
+    : [];
 
   const adminItems = isOwner
     ? [
@@ -186,6 +206,98 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {clientsGigsItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Clients & Gigs</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {clientsGigsItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      data-active={location === item.url ? "true" : undefined}
+                    >
+                      <a href={item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {paymentsItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Payments/Payouts</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {paymentsItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      data-active={location === item.url ? "true" : undefined}
+                    >
+                      <a href={item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {djItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>DJ's</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {djItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      data-active={location === item.url ? "true" : undefined}
+                    >
+                      <a href={item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {additionalItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Additional</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {additionalItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      data-active={location === item.url ? "true" : undefined}
+                    >
+                      <a href={item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {adminItems.length > 0 && (
           <SidebarGroup>
