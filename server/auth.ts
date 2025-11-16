@@ -34,7 +34,6 @@ passport.use(
         return done(null, {
           id: validUser.id,
           email: validUser.email,
-          username: validUser.email, // Use email as username since username doesn't exist in DB
           role: validUser.role,
           personnelId: validUser.personnelId,
         });

@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -21,7 +21,7 @@ const PgSession = connectPgSimple(session);
 
 // Validation middleware
 function validateBody(schema: z.ZodSchema) {
-  return (req: Request, res: Response, next: Function) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     try {
       const validated = schema.parse(req.body);
       req.body = validated;
@@ -39,8 +39,8 @@ function validateBody(schema: z.ZodSchema) {
 }
 
 // Async handler wrapper
-function asyncHandler(fn: (req: Request, res: Response, next: Function) => Promise<any>) {
-  return (req: Request, res: Response, next: Function) => {
+function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) {
+  return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
@@ -101,8 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin/manager roles must be assigned by existing admins
       const user = await storage.createUser({
         email: data.email,
-        username: data.email,
-        password: data.password,
+        passwordHash: data.password,
         role: "personnel", // Always set to personnel for new registrations
       });
 
@@ -154,7 +153,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           id: user.id,
           email: user.email,
-          username: user.username,
           role: user.role,
           personnelId: user.personnelId,
         });
@@ -184,7 +182,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         id: req.user.id,
         email: req.user.email,
-        username: req.user.username,
         role: req.user.role,
         personnelId: req.user.personnelId,
       });

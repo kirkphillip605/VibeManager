@@ -13,6 +13,7 @@ import {
   BarChart3,
   MapPin,
   FolderOpen,
+  Loader2,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import {
