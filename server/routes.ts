@@ -13,7 +13,7 @@ import {
   insertVenueSchema,
   insertContactSchema,
   insertGigSchema,
-  insertPersonnelPayoutSchema,
+  insertPayoutSchema,
   insertGigInvoiceSchema,
 } from "@shared/schema";
 
@@ -39,7 +39,7 @@ function validateBody(schema: z.ZodSchema) {
 }
 
 // Async handler wrapper
-function asyncHandler(fn: Function) {
+function asyncHandler(fn: (req: Request, res: Response, next: Function) => Promise<any>) {
   return (req: Request, res: Response, next: Function) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
@@ -110,7 +110,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.login({
         id: user.id,
         email: user.email,
-        username: user.username,
         role: user.role,
         personnelId: user.personnelId,
       }, (err) => {
@@ -120,7 +119,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           id: user.id,
           email: user.email,
-          username: user.username,
           role: user.role,
           personnelId: user.personnelId,
         });
