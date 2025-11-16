@@ -8,6 +8,13 @@
       "when": 1763296695980,
       "tag": "0000_conscious_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763307089132,
+      "tag": "0001_flippant_red_skull",
+      "breakpoints": true
     }
   ]
 }

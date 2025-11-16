@@ -161,6 +161,7 @@ export const customers = pgTable("customers", {
   lastName: text("last_name"),
   primaryEmail: text("primary_email"),
   primaryPhone: text("primary_phone"),
+  squareCustomerId: text("square_customer_id").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -296,25 +297,8 @@ export const invoiceItems = pgTable("invoice_items", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
-// Gig Invoices table (keeping for backward compatibility)
-export const gigInvoices = pgTable(
-  "gig_invoices",
-  {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    gigId: uuid("gig_id")
-      .notNull()
-      .references(() => gigs.id, { onDelete: "cascade" }),
-    externalInvoiceId: text("external_invoice_id").notNull(),
-    externalInvoiceUrl: text("external_invoice_url"),
-    amount: numeric("amount", { precision: 10, scale: 2 }),
-    status: text("status"),
-    issueDate: date("issue_date"),
-    dueDate: date("due_date"),
-  },
-  (table) => ({
-    uniqueGigInvoice: uniqueIndex().on(table.gigId, table.externalInvoiceId),
-  })
-);
+// Note: squareInvoices must be defined before gigInvoices for reference
+// This will be moved below after squareInvoices is defined
 
 // Personnel Payouts table
 export const personnelPayouts = pgTable("personnel_payouts", {
@@ -397,6 +381,102 @@ export const venueFiles = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.venueId, table.fileId] }),
+  })
+);
+
+// Square Integration Tables
+export const squareCustomers = pgTable("square_customers", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  squareCustomerId: text("square_customer_id").notNull().unique(),
+  fullData: jsonb("full_data").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const squareInvoices = pgTable(
+  "square_invoices",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    squareInvoiceId: text("square_invoice_id").notNull().unique(),
+    squareCustomerId: text("square_customer_id"),
+    fullData: jsonb("full_data").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    squareCustomerIdIdx: index("square_invoices_square_customer_id_idx").on(
+      table.squareCustomerId
+    ),
+  })
+);
+
+// Gig Invoices table (keeping for backward compatibility)
+export const gigInvoices = pgTable(
+  "gig_invoices",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    gigId: uuid("gig_id")
+      .notNull()
+      .references(() => gigs.id, { onDelete: "cascade" }),
+    externalInvoiceId: text("external_invoice_id").notNull(),
+    externalInvoiceUrl: text("external_invoice_url"),
+    amount: numeric("amount", { precision: 10, scale: 2 }),
+    status: text("status"),
+    issueDate: date("issue_date"),
+    dueDate: date("due_date"),
+    squareInvoiceUuid: uuid("square_invoice_uuid").references(() => squareInvoices.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => ({
+    uniqueGigInvoice: uniqueIndex().on(table.gigId, table.externalInvoiceId),
+  })
+);
+
+export const squarePayments = pgTable(
+  "square_payments",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    squarePaymentId: text("square_payment_id").notNull().unique(),
+    squareInvoiceId: text("square_invoice_id"),
+    squareCustomerId: text("square_customer_id"),
+    fullData: jsonb("full_data").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    squareInvoiceIdIdx: index("square_payments_square_invoice_id_idx").on(
+      table.squareInvoiceId
+    ),
+    squareCustomerIdIdx: index("square_payments_square_customer_id_idx").on(
+      table.squareCustomerId
+    ),
+  })
+);
+
+// Gig Invoice Payments table (for deposits/partial payments)
+export const gigInvoicePayments = pgTable(
+  "gig_invoice_payments",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    gigInvoiceId: uuid("gig_invoice_id")
+      .notNull()
+      .references(() => gigInvoices.id, { onDelete: "cascade" }),
+    paymentAmount: numeric("payment_amount", { precision: 10, scale: 2 }).notNull(),
+    paymentMethodId: uuid("payment_method_id").references(() => paymentMethods.id, {
+      onDelete: "set null",
+    }),
+    paymentDate: timestamp("payment_date", { withTimezone: true }).notNull().defaultNow(),
+    origin: text("origin").notNull().default("manual"),
+    notes: text("notes"),
+    squarePaymentId: text("square_payment_id").unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    gigInvoiceIdIdx: index("gig_invoice_payments_gig_invoice_id_idx").on(
+      table.gigInvoiceId
+    ),
+    paymentMethodIdIdx: index("gig_invoice_payments_payment_method_id_idx").on(
+      table.paymentMethodId
+    ),
   })
 );
 
@@ -549,6 +629,28 @@ export const insertPersonnelFileSchema = createInsertSchema(personnelFiles).omit
   uploadedAt: true,
 });
 
+// Square Integration insert schemas
+export const insertSquareCustomerSchema = createInsertSchema(squareCustomers).omit({
+  id: true,
+  fetchedAt: true,
+});
+
+export const insertSquareInvoiceSchema = createInsertSchema(squareInvoices).omit({
+  id: true,
+  fetchedAt: true,
+});
+
+export const insertSquarePaymentSchema = createInsertSchema(squarePayments).omit({
+  id: true,
+  fetchedAt: true,
+});
+
+export const insertGigInvoicePaymentSchema = createInsertSchema(gigInvoicePayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Lookup table insert schemas
 export const insertVenueTypeSchema = createInsertSchema(venueTypes).omit({
   id: true,
@@ -617,6 +719,19 @@ export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
 
 // Alias for backward compatibility
 export type InsertPersonnelPayout = InsertPayout;
+
+// Square Integration types
+export type SquareCustomer = typeof squareCustomers.$inferSelect;
+export type InsertSquareCustomer = z.infer<typeof insertSquareCustomerSchema>;
+
+export type SquareInvoice = typeof squareInvoices.$inferSelect;
+export type InsertSquareInvoice = z.infer<typeof insertSquareInvoiceSchema>;
+
+export type SquarePayment = typeof squarePayments.$inferSelect;
+export type InsertSquarePayment = z.infer<typeof insertSquarePaymentSchema>;
+
+export type GigInvoicePayment = typeof gigInvoicePayments.$inferSelect;
+export type InsertGigInvoicePayment = z.infer<typeof insertGigInvoicePaymentSchema>;
 
 // Lookup types
 export type VenueType = typeof venueTypes.$inferSelect;

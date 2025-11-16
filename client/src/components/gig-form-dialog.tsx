@@ -149,7 +149,13 @@ export function GigFormDialog({ open, onOpenChange, gig }: GigFormDialogProps) {
 
   const createGigMutation = useMutation({
     mutationFn: async (data: GigFormData) => {
-      const res = await apiRequest("POST", "/api/gigs", data);
+      // Convert Date objects to ISO strings for API
+      const payload = {
+        ...data,
+        startTime: data.startTime.toISOString(),
+        endTime: data.endTime.toISOString(),
+      };
+      const res = await apiRequest("POST", "/api/gigs", payload);
       return await res.json();
     },
     onSuccess: () => {
