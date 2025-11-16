@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT:-5000}
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - APP_DOMAIN=${APP_DOMAIN:-http://localhost:5000}
+    env_file:
+      - .env
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - vibemanager-network
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-vibemanager}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vibemanager}
+      - POSTGRES_DB=${POSTGRES_DB:-vibemanager}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - vibemanager-network
+
+volumes:
+  postgres-data:
+
+networks:
+  vibemanager-network:
+    driver: bridge

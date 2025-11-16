@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 // Pages
+import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Gigs from "@/pages/gigs";
@@ -66,6 +67,9 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
+      {/* Root Route - redirects based on auth status */}
+      <Route path="/" component={Home} />
+      
       {/* Public Routes */}
       <Route path="/login" component={Login} />
 
