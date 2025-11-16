@@ -51,6 +51,7 @@ export interface IStorage {
   createPersonnel(personnel: InsertPersonnel, createUserAccount?: boolean): Promise<Personnel>;
   updatePersonnel(id: string, personnel: Partial<InsertPersonnel>): Promise<Personnel | undefined>;
   deletePersonnel(id: string): Promise<boolean>;
+  createPersonnelUserLogin(personnelId: string, password?: string): Promise<{ user: User; generatedPassword?: string }>;
 
   // Customer methods
   getCustomer(id: string): Promise<Customer | undefined>;
@@ -74,6 +75,11 @@ export interface IStorage {
   createContact(contact: InsertContact): Promise<Contact>;
   updateContact(id: string, contact: Partial<InsertContact>): Promise<Contact | undefined>;
   deleteContact(id: string): Promise<boolean>;
+  findOrCreateContact(contact: InsertContact): Promise<{ contact: Contact; isExisting: boolean }>;
+  associateContactWithCustomer(contactId: string, customerId: string, roleId?: string): Promise<void>;
+  associateContactWithVenue(contactId: string, venueId: string, roleId?: string): Promise<void>;
+  removeContactFromCustomer(contactId: string, customerId: string): Promise<void>;
+  removeContactFromVenue(contactId: string, venueId: string): Promise<void>;
 
   // Gig methods
   getGig(id: string): Promise<Gig | undefined>;
@@ -109,6 +115,14 @@ export interface IStorage {
   getFilesByPersonnel(personnelId: string): Promise<PersonnelFile[]>;
   createFile(file: InsertPersonnelFile): Promise<PersonnelFile>;
   deleteFile(id: string): Promise<boolean>;
+
+  // Analytics methods
+  getAnalyticsSummary(): Promise<{
+    totalRevenue: number;
+    activePersonnel: number;
+    monthlyRevenue: number;
+    personnelWithGigCounts: Array<{ id: string; firstName: string; lastName: string; gigCount: number }>;
+  }>;
 
   // Lookup table methods
   getAllVenueTypes(): Promise<VenueType[]>;
@@ -295,6 +309,52 @@ export class PostgresStorage implements IStorage {
     return true;
   }
 
+  async createPersonnelUserLogin(personnelId: string, password?: string): Promise<{ user: User; generatedPassword?: string }> {
+    // Get personnel record
+    const personnel = await this.getPersonnel(personnelId);
+    if (!personnel) {
+      throw new Error("Personnel not found");
+    }
+    if (!personnel.email) {
+      throw new Error("Personnel must have an email to create a user login");
+    }
+
+    // Check if user already exists
+    const existingUser = await this.getUserByEmail(personnel.email);
+    if (existingUser) {
+      throw new Error("User login already exists for this personnel");
+    }
+
+    // Generate password if not provided
+    let generatedPassword: string | undefined;
+    if (!password) {
+      // Generate a random password: 3 words + 3 digits + 1 special char
+      const words = ['vibe', 'gig', 'beat', 'tune', 'song', 'mix', 'play', 'jazz', 'rock', 'soul'];
+      const word1 = words[Math.floor(Math.random() * words.length)];
+      const word2 = words[Math.floor(Math.random() * words.length)];
+      const word3 = words[Math.floor(Math.random() * words.length)];
+      const digits = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      const special = ['!', '@', '#', '$', '%'][Math.floor(Math.random() * 5)];
+      generatedPassword = `${word1}${word2}${word3}${digits}${special}`;
+      password = generatedPassword;
+    }
+
+    // Hash password and create user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const [user] = await db
+      .insert(schema.users)
+      .values({
+        email: personnel.email,
+        name: `${personnel.firstName} ${personnel.lastName}`,
+        passwordHash: hashedPassword,
+        role: "personnel",
+        personnelId: personnel.id,
+      })
+      .returning();
+
+    return { user, generatedPassword };
+  }
+
   // Customer methods
   async getCustomer(id: string): Promise<Customer | undefined> {
     const [customer] = await db
@@ -435,6 +495,138 @@ export class PostgresStorage implements IStorage {
   async deleteContact(id: string): Promise<boolean> {
     await db.delete(schema.contacts).where(eq(schema.contacts.id, id));
     return true;
+  }
+
+  async findOrCreateContact(contact: InsertContact): Promise<{ contact: Contact; isExisting: boolean }> {
+    // Check if contact already exists by email or phone
+    let existingContact: Contact | undefined;
+    
+    if (contact.email) {
+      const [found] = await db
+        .select()
+        .from(schema.contacts)
+        .where(eq(schema.contacts.email, contact.email))
+        .limit(1);
+      existingContact = found;
+    }
+    
+    if (!existingContact && contact.phone) {
+      const [found] = await db
+        .select()
+        .from(schema.contacts)
+        .where(eq(schema.contacts.phone, contact.phone))
+        .limit(1);
+      existingContact = found;
+    }
+
+    if (existingContact) {
+      return { contact: existingContact, isExisting: true };
+    }
+
+    // Create new contact
+    const [created] = await db
+      .insert(schema.contacts)
+      .values(contact)
+      .returning();
+    return { contact: created, isExisting: false };
+  }
+
+  async associateContactWithCustomer(contactId: string, customerId: string, roleId?: string): Promise<void> {
+    // Check if association already exists
+    const [existing] = await db
+      .select()
+      .from(schema.customerContacts)
+      .where(
+        and(
+          eq(schema.customerContacts.contactId, contactId),
+          eq(schema.customerContacts.customerId, customerId)
+        )
+      );
+
+    if (existing) {
+      // Update role if provided
+      if (roleId) {
+        await db
+          .update(schema.customerContacts)
+          .set({ contactRoleId: roleId })
+          .where(
+            and(
+              eq(schema.customerContacts.contactId, contactId),
+              eq(schema.customerContacts.customerId, customerId)
+            )
+          );
+      }
+      return;
+    }
+
+    // Create new association
+    await db
+      .insert(schema.customerContacts)
+      .values({
+        contactId,
+        customerId,
+        contactRoleId: roleId || null,
+      });
+  }
+
+  async associateContactWithVenue(contactId: string, venueId: string, roleId?: string): Promise<void> {
+    // Check if association already exists
+    const [existing] = await db
+      .select()
+      .from(schema.venueContacts)
+      .where(
+        and(
+          eq(schema.venueContacts.contactId, contactId),
+          eq(schema.venueContacts.venueId, venueId)
+        )
+      );
+
+    if (existing) {
+      // Update role if provided
+      if (roleId) {
+        await db
+          .update(schema.venueContacts)
+          .set({ contactRoleId: roleId })
+          .where(
+            and(
+              eq(schema.venueContacts.contactId, contactId),
+              eq(schema.venueContacts.venueId, venueId)
+            )
+          );
+      }
+      return;
+    }
+
+    // Create new association
+    await db
+      .insert(schema.venueContacts)
+      .values({
+        contactId,
+        venueId,
+        contactRoleId: roleId || null,
+      });
+  }
+
+  async removeContactFromCustomer(contactId: string, customerId: string): Promise<void> {
+    await db
+      .delete(schema.customerContacts)
+      .where(
+        and(
+          eq(schema.customerContacts.contactId, contactId),
+          eq(schema.customerContacts.customerId, customerId)
+        )
+      );
+  }
+
+  async removeContactFromVenue(contactId: string, venueId: string): Promise<void> {
+    await db
+      .delete(schema.venueContacts)
+      .where(
+        and(
+          eq(schema.venueContacts.contactId, contactId),
+          eq(schema.venueContacts.venueId, venueId)
+        )
+      );
   }
 
   // Gig methods
@@ -650,6 +842,69 @@ export class PostgresStorage implements IStorage {
       .delete(schema.personnelFiles)
       .where(eq(schema.personnelFiles.id, id));
     return true;
+  }
+
+  // Analytics methods
+  async getAnalyticsSummary(): Promise<{
+    totalRevenue: number;
+    activePersonnel: number;
+    monthlyRevenue: number;
+    personnelWithGigCounts: Array<{ id: string; firstName: string; lastName: string; gigCount: number }>;
+  }> {
+    // Get all invoices and calculate total revenue
+    const allInvoices = await this.getAllGigInvoices();
+    const totalRevenue = allInvoices
+      .filter(inv => inv.status === 'paid')
+      .reduce((sum, inv) => sum + (inv.amount ? parseFloat(inv.amount.toString()) : 0), 0);
+
+    // Calculate monthly revenue (current month)
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    // Get gigs for current month
+    const allGigs = await this.getAllGigs();
+    const monthGigs = allGigs.filter(gig => {
+      const gigDate = new Date(gig.startTime);
+      return gigDate >= monthStart && gigDate <= monthEnd;
+    });
+    
+    // Calculate monthly revenue from invoices for these gigs
+    const monthlyRevenue = allInvoices
+      .filter(inv => {
+        const gigMatch = monthGigs.find(g => g.id === inv.gigId);
+        return gigMatch && inv.status === 'paid';
+      })
+      .reduce((sum, inv) => sum + (inv.amount ? parseFloat(inv.amount.toString()) : 0), 0);
+
+    // Get active personnel count
+    const allPersonnel = await this.getAllPersonnel();
+    const activePersonnel = allPersonnel.filter(p => p.isActive).length;
+
+    // Get personnel with their gig counts
+    const personnelWithGigCounts = await Promise.all(
+      allPersonnel.map(async (person) => {
+        // Get gigs assigned to this personnel
+        const gigAssignments = await db
+          .select()
+          .from(schema.gigPersonnel)
+          .where(eq(schema.gigPersonnel.personnelId, person.id));
+        
+        return {
+          id: person.id,
+          firstName: person.firstName,
+          lastName: person.lastName,
+          gigCount: gigAssignments.length,
+        };
+      })
+    );
+
+    return {
+      totalRevenue,
+      activePersonnel,
+      monthlyRevenue,
+      personnelWithGigCounts,
+    };
   }
 
   // Lookup table methods

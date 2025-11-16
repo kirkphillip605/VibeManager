@@ -254,6 +254,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Personnel deleted successfully" });
   }));
 
+  // Create user login for personnel
+  app.post('/api/personnel/:id/create-login', requireManagerOrOwner, asyncHandler(async (req: Request, res: Response) => {
+    const { password } = req.body;
+    const result = await storage.createPersonnelUserLogin(req.params.id, password);
+    res.status(201).json(result);
+  }));
+
   // ===== CUSTOMER ROUTES =====
   
   app.get('/api/customers', requireAuth, asyncHandler(async (req: Request, res: Response) => {
@@ -290,6 +297,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Customer deleted successfully" });
   }));
 
+  // Get contacts for a customer
+  app.get('/api/customers/:id/contacts', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const contacts = await storage.getContactsByCustomer(req.params.id);
+    res.json(contacts);
+  }));
+
+  // Add or associate contact with customer
+  app.post('/api/customers/:id/contacts', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const { contactId, ...contactData } = req.body;
+    
+    if (contactId) {
+      // Associate existing contact
+      await storage.associateContactWithCustomer(contactId, req.params.id, req.body.roleId);
+      const contact = await storage.getContact(contactId);
+      res.json({ contact, isExisting: true });
+    } else {
+      // Find or create contact
+      const result = await storage.findOrCreateContact(contactData);
+      // Associate with customer
+      await storage.associateContactWithCustomer(result.contact.id, req.params.id, req.body.roleId);
+      res.status(result.isExisting ? 200 : 201).json(result);
+    }
+  }));
+
+  // Remove contact from customer
+  app.delete('/api/customers/:customerId/contacts/:contactId', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    await storage.removeContactFromCustomer(req.params.contactId, req.params.customerId);
+    res.json({ message: "Contact removed from customer" });
+  }));
+
   // ===== VENUE ROUTES =====
   
   app.get('/api/venues', requireAuth, asyncHandler(async (req: Request, res: Response) => {
@@ -324,6 +361,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ error: "Venue not found" });
     }
     res.json({ message: "Venue deleted successfully" });
+  }));
+
+  // Get contacts for a venue
+  app.get('/api/venues/:id/contacts', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const contacts = await storage.getContactsByVenue(req.params.id);
+    res.json(contacts);
+  }));
+
+  // Add or associate contact with venue
+  app.post('/api/venues/:id/contacts', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const { contactId, ...contactData } = req.body;
+    
+    if (contactId) {
+      // Associate existing contact
+      await storage.associateContactWithVenue(contactId, req.params.id, req.body.roleId);
+      const contact = await storage.getContact(contactId);
+      res.json({ contact, isExisting: true });
+    } else {
+      // Find or create contact
+      const result = await storage.findOrCreateContact(contactData);
+      // Associate with venue
+      await storage.associateContactWithVenue(result.contact.id, req.params.id, req.body.roleId);
+      res.status(result.isExisting ? 200 : 201).json(result);
+    }
+  }));
+
+  // Remove contact from venue
+  app.delete('/api/venues/:venueId/contacts/:contactId', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    await storage.removeContactFromVenue(req.params.contactId, req.params.venueId);
+    res.json({ message: "Contact removed from venue" });
   }));
 
   // ===== CONTACT ROUTES =====
@@ -378,12 +445,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   app.post('/api/gigs', requireAuth, asyncHandler(async (req: Request, res: Response) => {
-    const gig = await storage.createGig(req.body);
+    // Convert ISO string timestamps to Date objects
+    const gigData = {
+      ...req.body,
+      startTime: req.body.startTime ? new Date(req.body.startTime) : undefined,
+      endTime: req.body.endTime ? new Date(req.body.endTime) : undefined,
+    };
+    const gig = await storage.createGig(gigData);
     res.status(201).json(gig);
   }));
 
   app.put('/api/gigs/:id', requireAuth, asyncHandler(async (req: Request, res: Response) => {
-    const gig = await storage.updateGig(req.params.id, req.body);
+    // Convert ISO string timestamps to Date objects
+    const gigData = {
+      ...req.body,
+      startTime: req.body.startTime ? new Date(req.body.startTime) : undefined,
+      endTime: req.body.endTime ? new Date(req.body.endTime) : undefined,
+    };
+    const gig = await storage.updateGig(req.params.id, gigData);
     if (!gig) {
       return res.status(404).json({ error: "Gig not found" });
     }
@@ -412,6 +491,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/gigs/:id/personnel', requireAuth, asyncHandler(async (req: Request, res: Response) => {
     const personnel = await storage.getGigPersonnel(req.params.id);
     res.json(personnel);
+  }));
+
+  // Dashboard endpoints - upcoming gigs (next 7 days)
+  app.get('/api/gigs/upcoming', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const now = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(now.getDate() + 7);
+    
+    const allGigs = await storage.getAllGigs();
+    const upcoming = allGigs.filter(gig => {
+      const gigDate = new Date(gig.startTime);
+      return gigDate >= now && gigDate <= sevenDaysFromNow && gig.status !== 'cancelled';
+    }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+    res.json(upcoming);
+  }));
+
+  // Dashboard endpoints - pending gigs
+  app.get('/api/gigs/pending', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const allGigs = await storage.getAllGigs();
+    const pending = allGigs.filter(gig => gig.status === 'pending');
+    res.json(pending);
+  }));
+
+  // ===== ANALYTICS ROUTES =====
+  
+  // Analytics summary endpoint
+  app.get('/api/analytics/summary', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const summary = await storage.getAnalyticsSummary();
+    res.json(summary);
   }));
 
   // ===== LOOKUP TABLE ROUTES =====
