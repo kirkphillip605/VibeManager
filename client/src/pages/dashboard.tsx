@@ -16,6 +16,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { Gig } from "@shared/schema";
 
+interface AnalyticsSummary {
+  totalRevenue: number;
+  activePersonnel: number;
+  monthlyRevenue: number;
+  personnelWithGigCounts: Array<{ id: string; firstName: string; lastName: string; gigCount: number }>;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const today = startOfDay(new Date());
@@ -29,6 +36,11 @@ export default function Dashboard() {
   // Fetch pending gigs
   const { data: pendingGigs = [], isLoading: isLoadingPending } = useQuery<Gig[]>({
     queryKey: ["/api/gigs/pending"],
+  });
+
+  // Fetch analytics summary
+  const { data: analytics, isLoading: isLoadingAnalytics } = useQuery<AnalyticsSummary>({
+    queryKey: ["/api/analytics/summary"],
   });
 
   const getGreeting = () => {
@@ -93,8 +105,14 @@ export default function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">Available DJs</p>
+            {isLoadingAnalytics ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{analytics?.activePersonnel ?? 0}</div>
+                <p className="text-xs text-muted-foreground">Available DJs</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -104,8 +122,21 @@ export default function Dashboard() {
             <Music className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$24,500</div>
-            <p className="text-xs text-muted-foreground">+12% from last month</p>
+            {isLoadingAnalytics ? (
+              <Skeleton className="h-8 w-24" />
+            ) : analytics?.monthlyRevenue ? (
+              <>
+                <div className="text-2xl font-bold">
+                  ${analytics.monthlyRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </div>
+                <p className="text-xs text-muted-foreground">This month</p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">$0</div>
+                <p className="text-xs text-muted-foreground">No revenue data available</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

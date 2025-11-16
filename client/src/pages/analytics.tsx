@@ -69,6 +69,13 @@ function MetricCard({ title, value, description, icon, trend, trendLabel }: Metr
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("6");
 
+  interface AnalyticsSummary {
+    totalRevenue: number;
+    activePersonnel: number;
+    monthlyRevenue: number;
+    personnelWithGigCounts: Array<{ id: string; firstName: string; lastName: string; gigCount: number }>;
+  }
+
   // Fetch all data
   const { data: gigs = [] } = useQuery<Gig[]>({
     queryKey: ["/api/gigs"],
@@ -86,6 +93,10 @@ export default function Analytics() {
     queryKey: ["/api/venues"],
   });
 
+  const { data: analyticsSummary } = useQuery<AnalyticsSummary>({
+    queryKey: ["/api/analytics/summary"],
+  });
+
   // Calculate date range
   const endDate = new Date();
   const startDate = subMonths(endDate, parseInt(timeRange));
@@ -97,7 +108,7 @@ export default function Analytics() {
   });
 
   // Calculate metrics
-  const totalRevenue = 0; // Would need to come from invoices API
+  const totalRevenue = analyticsSummary?.totalRevenue || 0;
   const totalGigs = filteredGigs.length;
   const completedGigs = filteredGigs.filter(g => g.status === 'completed').length;
   const upcomingGigs = filteredGigs.filter(g => {
@@ -107,20 +118,21 @@ export default function Analytics() {
   const averageGigValue = totalGigs > 0 ? totalRevenue / totalGigs : 0;
   const completionRate = totalGigs > 0 ? (completedGigs / totalGigs) * 100 : 0;
 
-  // Calculate personnel utilization (real data would come from gig_personnel assignments)
-  // Note: This feature requires gig_personnel data which is not currently fetched
-  // Showing static placeholder until gig_personnel API is integrated
+  // Calculate personnel utilization from analytics summary
   const personnelUtilization = personnel.map(p => {
-    // TODO: Fetch actual gig assignments from /api/gigs/:id/personnel endpoint
-    const gigsAssigned = 0; // Will be replaced with actual data
+    const personnelData = analyticsSummary?.personnelWithGigCounts.find(pc => pc.id === p.id);
+    const gigsAssigned = personnelData?.gigCount || 0;
+    // Calculate utilization as percentage of total gigs in period
+    const utilization = totalGigs > 0 ? Math.round((gigsAssigned / totalGigs) * 100) : 0;
     return {
       name: `${p.firstName} ${p.lastName}`,
       gigs: gigsAssigned,
-      utilization: 0, // Will be calculated from actual assignments
+      utilization,
     };
   });
 
   // Revenue by month
+  // Note: This calculates gigs per month but revenue data requires invoice integration per month
   const monthlyRevenue = eachMonthOfInterval({
     start: startDate,
     end: endDate,
@@ -131,7 +143,9 @@ export default function Analytics() {
       const gigDate = new Date(gig.startTime);
       return gigDate >= monthStart && gigDate <= monthEnd;
     });
-    const revenue = 0; // Would need to come from invoices API
+    // Revenue per month would require fetching invoices by date range
+    // For now showing 0 with note that invoice integration is needed
+    const revenue = 0;
     return {
       month: format(month, 'MMM'),
       revenue,
@@ -151,10 +165,11 @@ export default function Analytics() {
 
   const gigTypeData = Object.values(gigsByType);
 
-  // Top customers by revenue
+  // Top customers by gig count (revenue requires invoice integration by customer)
   const customerRevenue = customers.map(customer => {
     const customerGigs = filteredGigs.filter(g => g.customerId === customer.id);
-    const revenue = 0; // Would need to come from invoices API
+    // Revenue by customer would require aggregating invoices per customer
+    const revenue = 0;
     return {
       name: customer.businessName || `${customer.firstName} ${customer.lastName}`,
       revenue,
@@ -162,13 +177,14 @@ export default function Analytics() {
     };
   }).sort((a, b) => b.gigs - a.gigs).slice(0, 5);
 
-  // Top venues
+  // Top venues by gig count (revenue requires invoice integration by venue)
   const venueStats = venues.map(venue => {
     const venueGigs = filteredGigs.filter(g => g.venueId === venue.id);
     return {
       name: venue.name,
       gigs: venueGigs.length,
-      revenue: 0, // Would need to come from invoices API
+      // Revenue by venue would require aggregating invoices per venue
+      revenue: 0,
     };
   }).sort((a, b) => b.gigs - a.gigs).slice(0, 5);
 
@@ -197,11 +213,9 @@ export default function Analytics() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Revenue"
-          value={`$${totalRevenue.toLocaleString()}`}
-          description="From all completed gigs"
+          value={totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : "$0"}
+          description={totalRevenue > 0 ? "From all completed gigs" : "No paid invoices yet"}
           icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-          trend={15}
-          trendLabel="vs last period"
         />
         <MetricCard
           title="Total Gigs"
@@ -211,8 +225,8 @@ export default function Analytics() {
         />
         <MetricCard
           title="Average Gig Value"
-          value={`$${averageGigValue.toFixed(0)}`}
-          description="Per event"
+          value={averageGigValue > 0 ? `$${averageGigValue.toFixed(0)}` : "$0"}
+          description={averageGigValue > 0 ? "Per event" : "No invoice data available"}
           icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
         />
         <MetricCard
@@ -237,27 +251,40 @@ export default function Analytics() {
             <Card>
               <CardHeader>
                 <CardTitle>Monthly Revenue</CardTitle>
-                <CardDescription>Revenue trends over time</CardDescription>
+                <CardDescription>
+                  {totalRevenue > 0 
+                    ? "Revenue trends over time" 
+                    : "No revenue data available - add paid invoices to see trends"}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={monthlyRevenue}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value: number) => `$${value.toLocaleString()}`}
-                    />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      name="Revenue"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {totalRevenue > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={monthlyRevenue}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value: number) => `$${value.toLocaleString()}`}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        name="Revenue"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    <div className="text-center space-y-2">
+                      <AlertCircle className="h-12 w-12 mx-auto opacity-20" />
+                      <p className="text-sm">No revenue data to display</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -394,30 +421,32 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {personnel.slice(0, 5).map((p, index) => {
-                // TODO: Replace with actual gig assignment data from gig_personnel table
-                const actualGigs = 0; // Will be fetched from API
-                const utilization = 0; // Will be calculated from assignments
-                return (
-                  <div key={p.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium" data-testid={`text-personnel-${p.id}`}>
-                        {p.firstName} {p.lastName}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" data-testid={`badge-gigs-${p.id}`}>
-                        {actualGigs} gigs
-                      </Badge>
-                      <span className="text-sm text-muted-foreground" data-testid={`text-utilization-${p.id}`}>
-                        {utilization}% utilization
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              {personnel.length === 0 && (
+              {personnelUtilization.length > 0 ? (
+                personnelUtilization
+                  .sort((a, b) => b.gigs - a.gigs)
+                  .slice(0, 5)
+                  .map((p) => {
+                    const person = personnel.find(pers => `${pers.firstName} ${pers.lastName}` === p.name);
+                    return (
+                      <div key={person?.id || p.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium" data-testid={`text-personnel-${person?.id}`}>
+                            {p.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" data-testid={`badge-gigs-${person?.id}`}>
+                            {p.gigs} {p.gigs === 1 ? 'gig' : 'gigs'}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground" data-testid={`text-utilization-${person?.id}`}>
+                            {p.utilization}% utilization
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
                 <div className="text-center text-muted-foreground py-8">
                   No personnel data available
                 </div>

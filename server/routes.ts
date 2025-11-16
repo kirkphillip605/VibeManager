@@ -493,6 +493,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(personnel);
   }));
 
+  // Dashboard endpoints - upcoming gigs (next 7 days)
+  app.get('/api/gigs/upcoming', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const now = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(now.getDate() + 7);
+    
+    const allGigs = await storage.getAllGigs();
+    const upcoming = allGigs.filter(gig => {
+      const gigDate = new Date(gig.startTime);
+      return gigDate >= now && gigDate <= sevenDaysFromNow && gig.status !== 'cancelled';
+    }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+    res.json(upcoming);
+  }));
+
+  // Dashboard endpoints - pending gigs
+  app.get('/api/gigs/pending', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const allGigs = await storage.getAllGigs();
+    const pending = allGigs.filter(gig => gig.status === 'pending');
+    res.json(pending);
+  }));
+
+  // ===== ANALYTICS ROUTES =====
+  
+  // Analytics summary endpoint
+  app.get('/api/analytics/summary', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const summary = await storage.getAnalyticsSummary();
+    res.json(summary);
+  }));
+
   // ===== LOOKUP TABLE ROUTES =====
   
   // Venue Types

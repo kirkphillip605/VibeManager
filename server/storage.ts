@@ -116,6 +116,14 @@ export interface IStorage {
   createFile(file: InsertPersonnelFile): Promise<PersonnelFile>;
   deleteFile(id: string): Promise<boolean>;
 
+  // Analytics methods
+  getAnalyticsSummary(): Promise<{
+    totalRevenue: number;
+    activePersonnel: number;
+    monthlyRevenue: number;
+    personnelWithGigCounts: Array<{ id: string; firstName: string; lastName: string; gigCount: number }>;
+  }>;
+
   // Lookup table methods
   getAllVenueTypes(): Promise<VenueType[]>;
   createVenueType(name: string): Promise<VenueType>;
@@ -834,6 +842,69 @@ export class PostgresStorage implements IStorage {
       .delete(schema.personnelFiles)
       .where(eq(schema.personnelFiles.id, id));
     return true;
+  }
+
+  // Analytics methods
+  async getAnalyticsSummary(): Promise<{
+    totalRevenue: number;
+    activePersonnel: number;
+    monthlyRevenue: number;
+    personnelWithGigCounts: Array<{ id: string; firstName: string; lastName: string; gigCount: number }>;
+  }> {
+    // Get all invoices and calculate total revenue
+    const allInvoices = await this.getAllGigInvoices();
+    const totalRevenue = allInvoices
+      .filter(inv => inv.status === 'paid')
+      .reduce((sum, inv) => sum + (inv.amount ? parseFloat(inv.amount.toString()) : 0), 0);
+
+    // Calculate monthly revenue (current month)
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    // Get gigs for current month
+    const allGigs = await this.getAllGigs();
+    const monthGigs = allGigs.filter(gig => {
+      const gigDate = new Date(gig.startTime);
+      return gigDate >= monthStart && gigDate <= monthEnd;
+    });
+    
+    // Calculate monthly revenue from invoices for these gigs
+    const monthlyRevenue = allInvoices
+      .filter(inv => {
+        const gigMatch = monthGigs.find(g => g.id === inv.gigId);
+        return gigMatch && inv.status === 'paid';
+      })
+      .reduce((sum, inv) => sum + (inv.amount ? parseFloat(inv.amount.toString()) : 0), 0);
+
+    // Get active personnel count
+    const allPersonnel = await this.getAllPersonnel();
+    const activePersonnel = allPersonnel.filter(p => p.isActive).length;
+
+    // Get personnel with their gig counts
+    const personnelWithGigCounts = await Promise.all(
+      allPersonnel.map(async (person) => {
+        // Get gigs assigned to this personnel
+        const gigAssignments = await db
+          .select()
+          .from(schema.gigPersonnel)
+          .where(eq(schema.gigPersonnel.personnelId, person.id));
+        
+        return {
+          id: person.id,
+          firstName: person.firstName,
+          lastName: person.lastName,
+          gigCount: gigAssignments.length,
+        };
+      })
+    );
+
+    return {
+      totalRevenue,
+      activePersonnel,
+      monthlyRevenue,
+      personnelWithGigCounts,
+    };
   }
 
   // Lookup table methods
